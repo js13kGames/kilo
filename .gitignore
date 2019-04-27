@@ -1,0 +1,14 @@
+# Dev-env specific
+.idea
+
+# Build/dist artifacts
+*.exe
+*.exe~
+*.dll
+
+# Catch-all for local databases, keys and other leaky things
+*.pem
+*.db
+*.bolt
+*.sqlite
+*.csv
