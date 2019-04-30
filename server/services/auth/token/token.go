@@ -23,11 +23,6 @@ func Zero() Token {
 	return zero
 }
 
-func FromString(s string) (Token, error) {
-	t := &Token{}
-	return *t, t.UnmarshalText([]byte(s))
-}
-
 func (t Token) MarshalText() ([]byte, error) {
 	b := make([]byte, SizeEncoded)
 	t.encode(b)

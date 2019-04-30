@@ -100,13 +100,14 @@ func (store *Store) Generate(actorId types.ActorId) (Token, error) {
 	return token, err
 }
 
-//
-func (store *Store) Get(token Token) *TokenMetadata {
+// Get returns the metadata associated with the given Token and true if the Token
+// exists in the Store. Otherwise it returns nil and false respectively.
+func (store *Store) Get(token Token) (*TokenMetadata, bool) {
 	store.mu.RLock()
-	t := store.items[token]
+	t, ok := store.items[token]
 	store.mu.RUnlock()
 
-	return t
+	return t, ok
 }
 
 // List returns a list of all Tokens owned by the given actor along with their metadata.
@@ -137,8 +138,6 @@ type tokenListItem struct {
 	Token   Token         `json:"token"`
 }
 
-//
-//
 //
 func (store *Store) RevokeOwned(token Token, actorId types.ActorId) (bool, error) {
 	store.mu.Lock()
