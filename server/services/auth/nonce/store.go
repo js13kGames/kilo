@@ -5,12 +5,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/js13kgames/kilo/server/services/auth/internal/encoding"
 	"github.com/js13kgames/kilo/server/types"
 )
 
 const (
 	ttl             = 300
-	cleanupInterval = 600
+	cleanupInterval = time.Minute * 10
 )
 
 // Store holds Nonces and manages their lifecycle.
@@ -23,7 +24,7 @@ type Store struct {
 	done  chan struct{}
 }
 
-func New() *Store {
+func NewStore() *Store {
 	return &Store{
 		items: make(map[Nonce]data),
 	}
@@ -49,8 +50,11 @@ func (store *Store) Generate(actorId *types.ActorId) (*Nonce, error) {
 		return nil, err
 	}
 
+	// Note that while we're using the base64 charset, we are not actually encoding
+	// the random bytes. This effectively considerably limits the number of possible
+	// permutations.
 	for i := 0; i < Size; i++ {
-		n[i] = Charset[n[i]>>2]
+		n[i] = encoding.Base64UrlEncoding[n[i]>>2]
 	}
 
 	// mnsec is monotonic nanoseconds since process start.
@@ -60,7 +64,13 @@ func (store *Store) Generate(actorId *types.ActorId) (*Nonce, error) {
 		actorId: actorId,
 	}
 
+	// In the off-chance of a collision, repeat.
 	store.mu.Lock()
+	if _, exists := store.items[n]; exists {
+		store.mu.Unlock()
+		return store.Generate(actorId)
+	}
+
 	store.items[n] = d
 	store.mu.Unlock()
 
