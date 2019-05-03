@@ -2,40 +2,51 @@ package token
 
 import (
 	"testing"
+
+	"github.com/klauspost/cpuid"
 )
 
-const (
-	decoded = "1234567890abcdefghijklmn"
-	encoded = "MTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1u"
-)
+var hasSSE3 = cpuid.CPU.SSSE3()
 
-func TestEncodeScalar(t *testing.T) {
+func TestEncodeSSE3(t *testing.T) {
+	if !hasSSE3 {
+		return
+	}
+
 	var (
 		tok Token
 		dst = make([]byte, 32)
 	)
 
 	copy(tok[:], decoded)
-	encodeScalar(dst, &tok)
+	encodeSSE3(dst, &tok)
 
 	if string(dst) != encoded {
 		t.Errorf("Expected %s, got %s instead.", encoded, dst)
 	}
 }
 
-func TestDecodeScalar(t *testing.T) {
+func TestDecodeSSE3(t *testing.T) {
+	if !hasSSE3 {
+		return
+	}
+
 	var (
 		tok Token
 	)
 
-	decodeScalar(&tok, []byte(encoded))
+	decodeSSE3(&tok, []byte(encoded))
 
 	if string(tok[:]) != decoded {
 		t.Errorf("Expected %s, got %s instead.", decoded, tok)
 	}
 }
 
-func BenchmarkEncodeScalar(b *testing.B) {
+func BenchmarkEncodeSSE3(b *testing.B) {
+	if !hasSSE3 {
+		return
+	}
+
 	var (
 		dst = make([]byte, SizeEncoded)
 		src = &Token{}
@@ -45,12 +56,16 @@ func BenchmarkEncodeScalar(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			encodeScalar(dst, src)
+			encodeSSE3(dst, src)
 		}
 	})
 }
 
-func BenchmarkDecodeScalar(b *testing.B) {
+func BenchmarkDecodeSSE3(b *testing.B) {
+	if !hasSSE3 {
+		return
+	}
+
 	var (
 		dst = &Token{}
 		src = []byte(encoded)
@@ -58,7 +73,7 @@ func BenchmarkDecodeScalar(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			decodeScalar(dst, src)
+			decodeSSE3(dst, src)
 		}
 	})
 }

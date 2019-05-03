@@ -24,9 +24,9 @@ func Zero() Token {
 }
 
 func (t Token) MarshalText() ([]byte, error) {
-	b := make([]byte, SizeEncoded)
-	t.encode(b)
-	return b, nil
+	dst := make([]byte, SizeEncoded)
+	encode(dst, &t)
+	return dst[:], nil
 }
 
 func (t *Token) UnmarshalText(src []byte) error {
@@ -46,17 +46,20 @@ func (t *Token) UnmarshalText(src []byte) error {
 	//			return errInvalidInput
 	//		}
 	//	}
+	//
+	// TODO(alcore) Should the above change, validity checks need to be contained in the decode funcs
+	// themselves, since the vectorized versions can do the above much faster with masks in each pass.
 
-	t.decode(src)
+	decode(t, src)
 	return nil
 }
 
 func (t Token) MarshalJSON() ([]byte, error) {
-	b := make([]byte, SizeEncoded+2)
-	t.encode(b[1 : SizeEncoded+1])
-	b[0], b[SizeEncoded+1] = '"', '"'
+	dst := make([]byte, SizeEncoded+2)
+	encode(dst[1:SizeEncoded+1], &t)
+	dst[0], dst[SizeEncoded+1] = '"', '"'
 
-	return b, nil
+	return dst, nil
 }
 
 func (t *Token) UnmarshalJSON(src []byte) error {

@@ -1,6 +1,6 @@
 package encoding
 
-const Base64UrlEncoding = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_"
+const Base64UrlEncoding = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 
 var (
 	// Decode LUT.

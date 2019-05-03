@@ -6,62 +6,74 @@ import "github.com/js13kgames/kilo/server/services/auth/internal/encoding"
 // As our sizes are known, static and don't need padding, enc/dec are unrolled and have all
 // sanity checks removed.
 //
-// BenchmarkEncodeStd   50000000               25.9 ns/op             0 B/op          0 allocs/op
-// BenchmarkEncodeDev   100000000              16.6 ns/op             0 B/op          0 allocs/op
+// BenchmarkEncodeStd     50000000              25.9 ns/op             0 B/op          0 allocs/op
+// BenchmarkEncodeScalar  100000000             16.0 ns/op             0 B/op          0 allocs/op
+// BenchmarkEncodeSSE3    300000000              5.6 ns/op             0 B/op          0 allocs/op
 //
-// BenchmarkDecodeStd    20000000              65.3 ns/op             0 B/op          0 allocs/op
-// BenchmarkDecodeDev    100000000             17.5 ns/op             0 B/op          0 allocs/op
+// BenchmarkDecodeStd     20000000              65.3 ns/op             0 B/op          0 allocs/op
+// BenchmarkDecodeScalar  100000000             17.2 ns/op             0 B/op          0 allocs/op
+// BenchmarkDecodeSSE3    300000000              5.1 ns/op             0 B/op          0 allocs/op
 //
 // Where std is encoding/base64 in the std lib and dev is our unrolled version, with decoding
 // performance being the more important factor to consider in our case.
+//
+// TODO(alcore) The encoding pkg currently builds the decoding LUT on init. Those 256 bytes don't
+// need to be allocated if we don't use the scalar version. Check back on this later to see if no
+// other code ends up using it.
 
 const enc = encoding.Base64UrlEncoding
 
-var dec = encoding.Base64UrlDecoding
+var (
+	dec = encoding.Base64UrlDecoding
 
-func (src *Token) encode(dst []byte) {
-	// BCE hint.
-	_ = dst[31]
+	encode = encodeScalar
+	decode = decodeScalar
+)
 
-	dst[0] = enc[(src[0]>>2)&0x3F]
-	dst[1] = enc[(src[0]<<4|src[1]>>4)&0x3F]
-	dst[2] = enc[(src[1]<<2|src[2]>>6)&0x3F]
-	dst[3] = enc[src[2]&0x3F]
-	dst[4] = enc[(src[3]>>2)&0x3F]
-	dst[5] = enc[(src[3]<<4|src[4]>>4)&0x3F]
-	dst[6] = enc[(src[4]<<2|src[5]>>6)&0x3F]
-	dst[7] = enc[src[5]&0x3F]
-
-	dst[8] = enc[(src[6]>>2)&0x3F]
-	dst[9] = enc[(src[6]<<4|src[7]>>4)&0x3F]
-	dst[10] = enc[(src[7]<<2|src[8]>>6)&0x3F]
-	dst[11] = enc[src[8]&0x3F]
-	dst[12] = enc[(src[9]>>2)&0x3F]
-	dst[13] = enc[(src[9]<<4|src[10]>>4)&0x3F]
-	dst[14] = enc[(src[10]<<2|src[11]>>6)&0x3F]
-	dst[15] = enc[src[11]&0x3F]
-
-	dst[16] = enc[(src[12]>>2)&0x3F]
-	dst[17] = enc[(src[12]<<4|src[13]>>4)&0x3F]
-	dst[18] = enc[(src[13]<<2|src[14]>>6)&0x3F]
-	dst[19] = enc[src[14]&0x3F]
-	dst[20] = enc[(src[15]>>2)&0x3F]
-	dst[21] = enc[(src[15]<<4|src[16]>>4)&0x3F]
-	dst[22] = enc[(src[16]<<2|src[17]>>6)&0x3F]
-	dst[23] = enc[src[17]&0x3F]
-
-	dst[24] = enc[(src[18]>>2)&0x3F]
-	dst[25] = enc[(src[18]<<4|src[19]>>4)&0x3F]
-	dst[26] = enc[(src[19]<<2|src[20]>>6)&0x3F]
-	dst[27] = enc[src[20]&0x3F]
-	dst[28] = enc[(src[21]>>2)&0x3F]
-	dst[29] = enc[(src[21]<<4|src[22]>>4)&0x3F]
-	dst[30] = enc[(src[22]<<2|src[23]>>6)&0x3F]
+func encodeScalar(dst []byte, src *Token) {
+	// We're running in reverse order here so no need for a BCE hint as the first index
+	// access takes care of that.
 	dst[31] = enc[src[23]&0x3F]
+	dst[30] = enc[(src[22]<<2|src[23]>>6)&0x3F]
+	dst[29] = enc[(src[21]<<4|src[22]>>4)&0x3F]
+	dst[28] = enc[(src[21]>>2)&0x3F]
+	dst[27] = enc[src[20]&0x3F]
+	dst[26] = enc[(src[19]<<2|src[20]>>6)&0x3F]
+	dst[25] = enc[(src[18]<<4|src[19]>>4)&0x3F]
+	dst[24] = enc[(src[18]>>2)&0x3F]
+
+	dst[23] = enc[src[17]&0x3F]
+	dst[22] = enc[(src[16]<<2|src[17]>>6)&0x3F]
+	dst[21] = enc[(src[15]<<4|src[16]>>4)&0x3F]
+	dst[20] = enc[(src[15]>>2)&0x3F]
+	dst[19] = enc[src[14]&0x3F]
+	dst[18] = enc[(src[13]<<2|src[14]>>6)&0x3F]
+	dst[17] = enc[(src[12]<<4|src[13]>>4)&0x3F]
+	dst[16] = enc[(src[12]>>2)&0x3F]
+
+	dst[15] = enc[src[11]&0x3F]
+	dst[14] = enc[(src[10]<<2|src[11]>>6)&0x3F]
+	dst[13] = enc[(src[9]<<4|src[10]>>4)&0x3F]
+	dst[12] = enc[(src[9]>>2)&0x3F]
+	dst[11] = enc[src[8]&0x3F]
+	dst[10] = enc[(src[7]<<2|src[8]>>6)&0x3F]
+	dst[9] = enc[(src[6]<<4|src[7]>>4)&0x3F]
+	dst[8] = enc[(src[6]>>2)&0x3F]
+
+	dst[7] = enc[src[5]&0x3F]
+	dst[6] = enc[(src[4]<<2|src[5]>>6)&0x3F]
+	dst[5] = enc[(src[3]<<4|src[4]>>4)&0x3F]
+	dst[4] = enc[(src[3]>>2)&0x3F]
+	dst[3] = enc[src[2]&0x3F]
+	dst[2] = enc[(src[1]<<2|src[2]>>6)&0x3F]
+	dst[1] = enc[(src[0]<<4|src[1]>>4)&0x3F]
+	dst[0] = enc[(src[0]>>2)&0x3F]
 }
 
-func (dst *Token) decode(src []byte) {
-	// BCE hint.
+func decodeScalar(dst *Token, src []byte) {
+	// BCE hint. Reverse order would still leave one boundary check as we're accessing src[30] before src[31]
+	// on the same line. Leaving expected here which happens to nicely mirror the shift order
+	// from encode at the same time.
 	_ = src[31]
 
 	dst[0] = byte(dec[src[0]]<<2 | dec[src[1]]>>4)
